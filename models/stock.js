@@ -15,7 +15,8 @@ const stockSchema = new mongoose.Schema({
     outstandingShares: { type: mongoose.Schema.Types.Mixed },
     earnings: { type: mongoose.Schema.Types.Mixed },
     financialStatements: { type: mongoose.Schema.Types.Mixed },
-  }
+  },
+  priceAction: { type: Array }
 
 
 });
