@@ -18,6 +18,10 @@ export const getStock = async (req, res) => {
 
   if (!stock.length) {
     const stockData = await fetchStockData(ticker)
+
+    if (stockData == 'error') {
+      res.status(200).json({ message: 'Stock not enough data' })
+    }
     const newStockData = new Stock({
       ticker: stockData.ticker,
       general: stockData.general,
@@ -31,7 +35,10 @@ export const getStock = async (req, res) => {
     try {
       res.status(200).json(stockData)
     } catch (err) {
-      res.status(404).json({ message: err.message })
+      if (stockData != 'error') {
+        res.status(404).json({ message: err.message })
+
+      }
     }
   } else {
     res.status(200).json(stock[0])
@@ -53,8 +60,7 @@ async function fetchStockData(ticker) {
     ticker: '',
     general: {},
     fundamentals: {},
-    priceAction: [],
-    technicals: []
+    priceAction: []
   }
 
   await fetch(`https://eodhistoricaldata.com/api/fundamentals/${ticker}.US?api_token=${process.env.API_KEY}`)
@@ -95,7 +101,9 @@ async function fetchStockData(ticker) {
 
     })
 
-
+  if (!stockData.fundamentals.financialStatements) {
+    return 'error'
+  }
 
   stockData.fundamentals.financialStatements.Statistics = {
     yearly: {},
@@ -110,14 +118,14 @@ async function fetchStockData(ticker) {
     report.otherCostOfRevenue = Number(report.costOfRevenue) - Number(report.depreciationAndAmortization);
 
     stockData.fundamentals.financialStatements.Statistics.yearly[report.date] = {
-      sharesOutstanding: stockData.fundamentals.outstandingShares.annual[index].shares,
+      sharesOutstanding: stockData.fundamentals.outstandingShares.annual[index]?.shares,
       grossMargin: Number(report.grossProfit) / Number(report.totalRevenue),
       operatingMargin: Number(report.operatingIncome) / Number(report.totalRevenue),
       netMargin: Number(report.netIncome) / Number(report.totalRevenue),
-      returnOnAssets: Number(report.netIncome) / stockData.fundamentals.financialStatements.Balance_Sheet.yearly[key].totalAssets,
-      returnOnEquity: Number(report.netIncome) / stockData.fundamentals.financialStatements.Balance_Sheet.yearly[key].totalStockholderEquity,
-      currentRatio: stockData.fundamentals.financialStatements.Balance_Sheet.yearly[key].totalCurrentAssets / stockData.fundamentals.financialStatements.Balance_Sheet.yearly[key].totalCurrentLiabilities,
-      quickRatio: stockData.fundamentals.financialStatements.Balance_Sheet.yearly[key].cashAndEquivalents / stockData.fundamentals.financialStatements.Balance_Sheet.yearly[key].totalCurrentLiabilities,
+      returnOnAssets: Number(report.netIncome) / stockData.fundamentals.financialStatements.Balance_Sheet.yearly[key]?.totalAssets,
+      returnOnEquity: Number(report.netIncome) / stockData.fundamentals.financialStatements.Balance_Sheet.yearly[key]?.totalStockholderEquity,
+      currentRatio: stockData.fundamentals.financialStatements.Balance_Sheet.yearly[key]?.totalCurrentAssets / stockData.fundamentals.financialStatements.Balance_Sheet.yearly[key]?.totalCurrentLiabilities,
+      quickRatio: stockData.fundamentals.financialStatements.Balance_Sheet.yearly[key]?.cashAndEquivalents / stockData.fundamentals.financialStatements.Balance_Sheet.yearly[key]?.totalCurrentLiabilities,
     };
   }
 
@@ -127,37 +135,97 @@ async function fetchStockData(ticker) {
     stockData.fundamentals.financialStatements.Statistics.quarterly[report.date] = {
       date: report.date,
       filing_date: report.filing_date,
-      sharesOutstanding: stockData.fundamentals.outstandingShares.quarterly[index].shares,
-      grossMargin: Number(report.grossProfit) / Number(report.totalRevenue),
-      operatingMargin: Number(report.operatingIncome) / Number(report.totalRevenue),
-      netMargin: Number(report.netIncome) / Number(report.totalRevenue),
-      returnOnAssets: Number(report.netIncome) / stockData.fundamentals.financialStatements.Balance_Sheet.quarterly[key].totalAssets,
-      returnOnEquity: Number(report.netIncome) / stockData.fundamentals.financialStatements.Balance_Sheet.quarterly[key].totalStockholderEquity,
-      currentRatio: stockData.fundamentals.financialStatements.Balance_Sheet.quarterly[key].totalCurrentAssets / stockData.fundamentals.financialStatements.Balance_Sheet.quarterly[key].totalCurrentLiabilities,
-      quickRatio: stockData.fundamentals.financialStatements.Balance_Sheet.quarterly[key].cashAndEquivalents / stockData.fundamentals.financialStatements.Balance_Sheet.quarterly[key].totalCurrentLiabilities,
+      sharesOutstanding: stockData.fundamentals.outstandingShares.quarterly[index]?.shares,
+      grossMargin: Number(report.grossProfit) / Number(report?.totalRevenue),
+      operatingMargin: Number(report.operatingIncome) / Number(report?.totalRevenue),
+      netMargin: Number(report.netIncome) / Number(report?.totalRevenue),
+      returnOnAssets: Number(report.netIncome) / stockData.fundamentals.financialStatements.Balance_Sheet.quarterly[key]?.totalAssets,
+      returnOnEquity: Number(report.netIncome) / stockData.fundamentals.financialStatements.Balance_Sheet.quarterly[key]?.totalStockholderEquity,
+      currentRatio: stockData.fundamentals.financialStatements.Balance_Sheet.quarterly[key]?.totalCurrentAssets / stockData.fundamentals.financialStatements.Balance_Sheet.quarterly[key]?.totalCurrentLiabilities,
+      quickRatio: stockData.fundamentals.financialStatements.Balance_Sheet.quarterly[key]?.cashAndEquivalents / stockData.fundamentals.financialStatements.Balance_Sheet.quarterly[key]?.totalCurrentLiabilities,
     };
   }
 
 
-  Object.keys(stockData.fundamentals.financialStatements.Statistics.quarterly).forEach(fundamentalPeriod => {
-    const fundamentalYear = fundamentalPeriod.split('-')[0]
-    const fundamentalMonth = fundamentalPeriod.split('-')[1]
-    const fundamentalMonthNew = Number(fundamentalPeriod.split('-')[1]) + 3
-    const fundamentalDay = fundamentalPeriod.split('-')[2]
-    stockData.priceAction.forEach(pricePeriod => {
-      if (new Date(pricePeriod.date).getTime() >= new Date(`${fundamentalYear}-${fundamentalMonth}-${fundamentalDay}`).getTime() ||
-        new Date(pricePeriod.date).getTime() <= new Date(`${fundamentalYear}-${fundamentalMonthNew}-${fundamentalDay}`).getTime()
-      ) {
-        pricePeriod.marketCap = stockData.fundamentals.financialStatements.Statistics.quarterly[fundamentalPeriod].sharesOutstanding * pricePeriod.adjusted_close
-        // stockData.technicals.push({
+  const priceAction = stockData.priceAction;
+  const quarterlyStatistics = stockData.fundamentals.financialStatements.Statistics.quarterly;
+  const quarterlyIncomeStatement = stockData.fundamentals.financialStatements.Income_Statement.quarterly;
+  const quarterlyBalanceSheet = stockData.fundamentals.financialStatements.Balance_Sheet.quarterly;
+  const quarterlyCashflowStatement = stockData.fundamentals.financialStatements.Cash_Flow.quarterly;
+  const periods = Object.keys(quarterlyStatistics).reverse();
 
-        // })
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth() + 1;
+  const currentDay = currentDate.getDate();
+
+  for (let i = 0; i < periods.length; i++) {
+    const fundamentalPeriod = periods[i];
+    const [fundamentalYear, fundamentalMonth, fundamentalDay] = fundamentalPeriod.split('-');
+    let fundamentalMonthNew = Number(fundamentalMonth) + 3;
+    let endDate;
+
+    if (fundamentalMonthNew > 12) {
+      endDate = new Date(Number(fundamentalYear) + 1, fundamentalMonthNew - 12, fundamentalDay);
+    } else {
+      endDate = new Date(fundamentalYear, fundamentalMonthNew, fundamentalDay);
+    }
+
+    if (i === periods.length - 1) {
+      endDate = currentDate;
+    }
+
+    const startDate = new Date(fundamentalYear, fundamentalMonth - 1, fundamentalDay);
+    stockData.fundamentals.Dcf.tenYears = {
+
+    }
+    stockData.fundamentals.Dcf.fiveYears = {
+
+    }
+
+    stockData.fundamentals.Dcf.oneYear = {
+
+    }
+
+
+    for (let j = 0; j < priceAction.length; j++) {
+      const pricePeriod = priceAction[j];
+      const priceDate = new Date(pricePeriod.date);
+
+      if (priceDate >= startDate && priceDate <= endDate) {
+        function addTMM(statement, metric) {
+          try {
+            return Number(statement[periods[i]][metric]) +
+              Number(statement[periods[i - 1]][metric]) +
+              Number(statement[periods[i - 2]][metric]) +
+              Number(statement[periods[i - 3]][metric])
+          } catch {
+            try {
+              return Number(statement[periods[i]][metric])
+            } catch {
+              return 0
+            }
+          }
+
+        }
+        const revenueTTM = addTMM(quarterlyIncomeStatement, 'totalRevenue')
+        const ebitTTM = addTMM(quarterlyIncomeStatement, 'operatingIncome')
+        const netIncomeTTM = addTMM(quarterlyIncomeStatement, 'netIncome')
+        const freeCashflowTTM = addTMM(quarterlyCashflowStatement, 'freeCashFlow')
+        const bookValue = quarterlyBalanceSheet[fundamentalPeriod]?.totalStockholderEquity
+        pricePeriod.marketCap = quarterlyStatistics[fundamentalPeriod]?.sharesOutstanding * pricePeriod?.adjusted_close;
+        pricePeriod.enterpriceValue = pricePeriod?.marketCap +
+          Number(quarterlyBalanceSheet[fundamentalPeriod]?.shortLongTermDebtTotal) -
+          Number(quarterlyBalanceSheet[fundamentalPeriod]?.cashAndEquivalents) -
+          Number(quarterlyBalanceSheet[fundamentalPeriod]?.shortTermInvestments)
+        pricePeriod.priceSales = pricePeriod.marketCap / revenueTTM
+        pricePeriod.priceEarnings = pricePeriod.marketCap / netIncomeTTM
+        pricePeriod.priceBook = pricePeriod.marketCap / bookValue
+        pricePeriod.priceFreeCashflow = pricePeriod.marketCap / freeCashflowTTM
+        pricePeriod.enterpriceValueEbit = pricePeriod.enterpriceValue / ebitTTM
+
       }
-    })
-  })
-
-
-
+    }
+  }
 
   return (stockData)
 

@@ -9,6 +9,7 @@ import stockRouter from './routes/stocks.js'
 import authRouter from './routes/auth.js'
 import paymentRouter from './routes/payment.js'
 import webhookRouter from './routes/webhook.js'
+import dcfRouter from './routes/dcf.js'
 
 dotenv.config();
 
@@ -24,8 +25,10 @@ app.use('/', homeRouter)
 app.use('/stocks', stockRouter)
 app.use('/auth', authRouter)
 app.use('/payment', paymentRouter)
+app.use('/dcf', dcfRouter)
 
 const CONNECTION_URL = process.env.MONGODB
+
 const PORT = process.env.PORT || 5000
 
 mongoose.connect(CONNECTION_URL, { useNewUrlParser: true, useUnifiedTopology: true })
