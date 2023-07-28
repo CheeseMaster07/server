@@ -15,8 +15,13 @@ const stockSchema = new mongoose.Schema({
     outstandingShares: { type: mongoose.Schema.Types.Mixed },
     earnings: { type: mongoose.Schema.Types.Mixed },
     financialStatements: { type: mongoose.Schema.Types.Mixed },
+    dcf: { type: mongoose.Schema.Types.Mixed },
   },
-  priceAction: { type: Array }
+  priceAction: { type: Array },
+  dividendsData: { type: mongoose.Schema.Types.Mixed },
+  buybacks: { type: mongoose.Schema.Types.Mixed },
+  secFilings: { type: mongoose.Schema.Types.Mixed },
+  competition: { type: mongoose.Schema.Types.Mixed },
 
 
 });
