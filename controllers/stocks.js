@@ -305,7 +305,7 @@ async function fetchStockData(ticker) {
       })
   }
 
-  console.log(stockData.general)
+  //console.log(stockData.general)
 
   if (!stockData.fundamentals.financialStatements || !stockData.general.Sector || !stockData.general.FullTimeEmployees) {
     return 'error'
