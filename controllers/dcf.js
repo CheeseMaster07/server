@@ -7,8 +7,9 @@ export const dcf = async (req, res) => {
   const stock = await Stock.findOne({ ticker: ticker })
 
   const currentRevenue = stock.fundamentals.highlights.RevenueTTM
+  const currentNetDebt = Number(stock.fundamentals.financialStatements.Balance_Sheet.quarterly[Object.keys(stock.fundamentals.financialStatements.Balance_Sheet.quarterly)[0]].netDebt)
   const sharesOutstanding = stock.fundamentals.sharesStats.SharesOutstanding
-
+  const currentStockPrice = stock.priceAction[stock.priceAction.length - 1].adjusted_close
 
   // Bear case
   const bearCase = {}
@@ -30,12 +31,16 @@ export const dcf = async (req, res) => {
       freeCashflows = freeCashflows + discountedEarnings * Number(bear.freeCashflowMultiple)
     }
   }
-  bearCase.marketCap = (earnings + freeCashflows) / 2
+  bearCase.marketCap = ((earnings + freeCashflows) / 2) - currentNetDebt
   bearCase.stockPrice = bearCase.marketCap / sharesOutstanding
+  bearCase.upsideDownside = ((bearCase.stockPrice - currentStockPrice) / currentStockPrice) * 100
   bearCase.futureStockPrice = bearCase.stockPrice * (1 + (Number(bear.desiredAnnualReturn) / 100)) ** years
-  bearCase.currentStockPrice = stock.priceAction[stock.priceAction.length - 1].adjusted_close
+  bearCase.futureMarketCap = bearCase.futureStockPrice * sharesOutstanding
+  bearCase.futureRevenue = currentRevenue * (1 + (Number(bear.growthRate) / 100)) ** years
+  bearCase.futureNetIncome = bearCase.futureRevenue * (Number(bear.profitMargin) / 100)
   bearCase.MOSstockPrice = bearCase.stockPrice * (bear.marginOfsafety / 100)
-  bearCase.CAGR = (((bearCase.futureStockPrice / bearCase.currentStockPrice) ** (1 / years)) - 1) * 100
+  bearCase.bagger = bearCase.futureStockPrice / currentStockPrice
+  bearCase.CAGR = (((bearCase.futureStockPrice / currentStockPrice) ** (1 / years)) - 1) * 100
 
 
   // Neutral Case
@@ -58,12 +63,16 @@ export const dcf = async (req, res) => {
       freeCashflows = freeCashflows + discountedEarnings * Number(neutral.freeCashflowMultiple)
     }
   }
-  neutralCase.marketCap = (earnings + freeCashflows) / 2
+  neutralCase.marketCap = ((earnings + freeCashflows) / 2) - currentNetDebt
   neutralCase.stockPrice = neutralCase.marketCap / sharesOutstanding
+  neutralCase.upsideDownside = ((neutralCase.stockPrice - currentStockPrice) / currentStockPrice) * 100
   neutralCase.futureStockPrice = neutralCase.stockPrice * (1 + (Number(neutral.desiredAnnualReturn) / 100)) ** years
-  neutralCase.currentStockPrice = stock.priceAction[stock.priceAction.length - 1].adjusted_close
+  neutralCase.futureMarketCap = neutralCase.futureStockPrice * sharesOutstanding
+  neutralCase.futureRevenue = currentRevenue * (1 + (Number(neutral.growthRate) / 100)) ** years
+  neutralCase.futureNetIncome = neutralCase.futureRevenue * (Number(neutral.profitMargin) / 100)
   neutralCase.MOSstockPrice = neutralCase.stockPrice * (neutral.marginOfsafety / 100)
-  neutralCase.CAGR = (((neutralCase.futureStockPrice / neutralCase.currentStockPrice) ** (1 / years)) - 1) * 100
+  neutralCase.bagger = neutralCase.futureStockPrice / currentStockPrice
+  neutralCase.CAGR = (((neutralCase.futureStockPrice / currentStockPrice) ** (1 / years)) - 1) * 100
 
   // Bull Case
   const bullCase = {}
@@ -85,12 +94,16 @@ export const dcf = async (req, res) => {
       freeCashflows = freeCashflows + discountedEarnings * Number(bull.freeCashflowMultiple)
     }
   }
-  bullCase.marketCap = (earnings + freeCashflows) / 2
+  bullCase.marketCap = ((earnings + freeCashflows) / 2) - currentNetDebt
   bullCase.stockPrice = bullCase.marketCap / sharesOutstanding
+  bullCase.upsideDownside = ((bullCase.stockPrice - currentStockPrice) / currentStockPrice) * 100
   bullCase.futureStockPrice = bullCase.stockPrice * (1 + (Number(bull.desiredAnnualReturn) / 100)) ** years
-  bullCase.currentStockPrice = stock.priceAction[stock.priceAction.length - 1].adjusted_close
+  bullCase.futureMarketCap = bullCase.futureStockPrice * sharesOutstanding
+  bullCase.futureRevenue = currentRevenue * (1 + (Number(bull.growthRate) / 100)) ** years
+  bullCase.futureNetIncome = bullCase.futureRevenue * (Number(bull.profitMargin) / 100)
   bullCase.MOSstockPrice = bullCase.stockPrice * (bull.marginOfsafety / 100)
-  bullCase.CAGR = (((bullCase.futureStockPrice / bullCase.currentStockPrice) ** (1 / years)) - 1) * 100
+  bullCase.bagger = bullCase.futureStockPrice / currentStockPrice
+  bullCase.CAGR = (((bullCase.futureStockPrice / currentStockPrice) ** (1 / years)) - 1) * 100
 
 
   try {

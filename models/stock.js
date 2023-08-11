@@ -22,6 +22,7 @@ const stockSchema = new mongoose.Schema({
   buybacks: { type: mongoose.Schema.Types.Mixed },
   secFilings: { type: mongoose.Schema.Types.Mixed },
   competition: { type: mongoose.Schema.Types.Mixed },
+  screenerData: { type: mongoose.Schema.Types.Mixed },
 
 
 });
