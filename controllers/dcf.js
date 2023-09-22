@@ -42,7 +42,6 @@ export const dcf = async (req, res) => {
   bearCase.bagger = bearCase.futureStockPrice / currentStockPrice
   bearCase.CAGR = (((bearCase.futureStockPrice / currentStockPrice) ** (1 / years)) - 1) * 100
 
-
   // Neutral Case
   const neutralCase = {}
   earnings = 0
@@ -103,8 +102,19 @@ export const dcf = async (req, res) => {
   bullCase.futureNetIncome = bullCase.futureRevenue * (Number(bull.profitMargin) / 100)
   bullCase.MOSstockPrice = bullCase.stockPrice * (bull.marginOfsafety / 100)
   bullCase.bagger = bullCase.futureStockPrice / currentStockPrice
+
   bullCase.CAGR = (((bullCase.futureStockPrice / currentStockPrice) ** (1 / years)) - 1) * 100
 
+  if (isNaN(bearCase.CAGR)) {
+    bearCase.CAGR = -100
+  }
+  if (isNaN(neutralCase.CAGR)) {
+    neutralCase.CAGR = -100
+  }
+
+  if (isNaN(bullCase.CAGR)) {
+    bullCase.CAGR = -100
+  }
 
   try {
     res.status(200).json({
